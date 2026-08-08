@@ -1,8 +1,17 @@
 import { Bell, ClipboardCheck, MessageSquare, Paperclip, CalendarClock } from "lucide-react";
+import { createPortal } from "react-dom";
 import { notificationsApi } from "../../api/notifications";
 import { timeAgo } from "../../lib/format";
 import type { Notification, NotificationType } from "../../types";
 import { EmptyState } from "../ui/States";
+
+// Matches the Topbar's h-16 height. The panel is anchored below it rather
+// than covering it, per the drawer's expected desktop/mobile layout.
+const TOPBAR_HEIGHT = "4rem";
+
+// Panel width: never wider than 380px, and on narrow viewports shrinks to
+// leave a consistent 24px gutter so it can never overflow the viewport.
+const PANEL_WIDTH = "min(380px, calc(100vw - 24px))";
 
 const ICONS: Record<NotificationType, typeof Bell> = {
   TASK: ClipboardCheck,
@@ -35,17 +44,32 @@ export function NotificationPanel({
     onRefetch();
   };
 
-  return (
-    <div className="fixed inset-0 z-50 flex justify-end">
-      <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-      <div className="relative flex h-full w-80 flex-col bg-white shadow-xl">
-        <div className="flex items-center justify-between border-b border-border px-4 py-3.5">
-          <h3 className="font-heading text-sm font-semibold text-foreground">Notifications</h3>
-          <button onClick={markAllRead} className="text-xs font-medium text-primary hover:underline">
+  // Portalled to document.body — rendering this in place (inside <header>,
+  // which uses backdrop-blur) would trap `position: fixed` inside the
+  // header's box instead of the viewport, since backdrop-filter creates a
+  // new containing block (same as transform/filter/will-change). Modal.tsx
+  // already sidesteps this the same way.
+  return createPortal(
+    <>
+      <div
+        className="fixed inset-x-0 bottom-0 z-40 bg-black/30"
+        style={{ top: TOPBAR_HEIGHT }}
+        onClick={onClose}
+      />
+      <div
+        className="fixed bottom-0 right-0 z-50 flex flex-col overflow-hidden bg-white shadow-xl"
+        style={{ top: TOPBAR_HEIGHT, width: PANEL_WIDTH }}
+      >
+        <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border px-4 py-3.5">
+          <h3 className="truncate font-heading text-sm font-semibold text-foreground">Notifications</h3>
+          <button
+            onClick={markAllRead}
+            className="shrink-0 text-xs font-medium text-primary hover:underline"
+          >
             Mark all read
           </button>
         </div>
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
           {notifications.length === 0 ? (
             <div className="p-4">
               <EmptyState title="You're all caught up" description="No notifications yet." icon={<Bell size={28} />} />
@@ -78,6 +102,7 @@ export function NotificationPanel({
           )}
         </div>
       </div>
-    </div>
+    </>,
+    document.body
   );
 }
