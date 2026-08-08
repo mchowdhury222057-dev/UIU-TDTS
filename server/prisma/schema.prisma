@@ -1,0 +1,301 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ---------- Enums ----------
+
+enum Role {
+  SUPER_ADMIN
+  FACULTY
+  TA
+  LEADER
+  STUDENT
+}
+
+enum Department {
+  CS
+  SE
+  IS
+  EEE
+  BBA
+  ENG
+}
+
+enum Priority {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+enum ProjectStatus {
+  PLANNING
+  ACTIVE
+  ON_HOLD
+  COMPLETED
+  CANCELLED
+}
+
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+}
+
+enum TaskStatus {
+  BACKLOG
+  TODO
+  STARTED
+  IN_PROGRESS
+  REVIEW
+  TESTING
+  COMPLETED
+  CANCELLED
+}
+
+enum ReviewStatus {
+  PENDING_REVIEW
+  APPROVED
+  CHANGES_REQUESTED
+  REJECTED
+}
+
+enum NotificationType {
+  TASK
+  DEADLINE
+  REVIEW
+  MENTION
+  UPLOAD
+}
+
+// ---------- Models ----------
+
+model User {
+  id           String      @id @default(cuid())
+  email        String      @unique
+  passwordHash String
+  name         String
+  initials     String
+  avatarColor  String      @default("#F59E0B")
+  role         Role        @default(STUDENT)
+  department   Department?
+  title        String?
+  bio          String?
+  skills       String[]    @default([])
+  semester     String?     @default("Summer 2026")
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+
+  projectsSupervised Project[]     @relation("ProjectSupervisor")
+  projectsCreated    Project[]     @relation("ProjectCreator")
+  teamsLed           Team[]        @relation("TeamLeader")
+  teamsCreated       Team[]        @relation("TeamCreator")
+  teamMemberships    TeamMember[]
+  tasksAssigned      Task[]        @relation("TaskAssignee")
+  tasksCreated       Task[]        @relation("TaskCreator")
+  taskComments       TaskComment[]
+  attachmentsUploaded TaskAttachment[]
+  reviewsGiven       Review[]      @relation("Reviewer")
+  reviewsSubmitted   Review[]      @relation("Submitter")
+  notifications      Notification[]
+  performance        Performance[]
+  auditLogs          AuditLog[]    @relation("AuditActor")
+
+  @@index([email])
+  @@index([role])
+}
+
+model Project {
+  id           String        @id @default(cuid())
+  name         String
+  courseCode   String
+  description  String?
+  priority     Priority      @default(MEDIUM)
+  status       ProjectStatus @default(PLANNING)
+  progress     Int           @default(0)
+  deadline     DateTime
+  supervisorId String
+  createdById  String
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+
+  supervisor User          @relation("ProjectSupervisor", fields: [supervisorId], references: [id], onDelete: Restrict)
+  createdBy  User          @relation("ProjectCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  teams      Team[]
+  tasks      Task[]
+  performance Performance[]
+
+  @@index([supervisorId])
+  @@index([status])
+  @@index([deadline])
+}
+
+model Team {
+  id          String   @id @default(cuid())
+  name        String
+  projectId   String
+  leaderId    String
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  project   Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  leader    User         @relation("TeamLeader", fields: [leaderId], references: [id], onDelete: Restrict)
+  createdBy User         @relation("TeamCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  members   TeamMember[]
+  tasks     Task[]
+
+  @@index([projectId])
+  @@index([leaderId])
+}
+
+model TeamMember {
+  id       String   @id @default(cuid())
+  teamId   String
+  userId   String
+  joinedAt DateTime @default(now())
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, userId])
+  @@index([userId])
+}
+
+model Task {
+  id          String       @id @default(cuid())
+  title       String
+  description String?
+  priority    TaskPriority @default(MEDIUM)
+  status      TaskStatus   @default(BACKLOG)
+  assigneeId  String?
+  projectId   String
+  teamId      String?
+  dueDate     DateTime?
+  progress    Int          @default(0)
+  tags        String[]     @default([])
+  createdById String
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  assignee    User?            @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  createdBy   User             @relation("TaskCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  project     Project          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  team        Team?            @relation(fields: [teamId], references: [id], onDelete: SetNull)
+  comments    TaskComment[]
+  reviews     Review[]
+  attachments TaskAttachment[]
+
+  @@index([assigneeId])
+  @@index([projectId])
+  @@index([teamId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model TaskComment {
+  id        String   @id @default(cuid())
+  taskId    String
+  userId    String
+  comment   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  task Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+}
+
+model TaskAttachment {
+  id           String   @id @default(cuid())
+  taskId       String
+  uploadedById String
+  fileName     String
+  fileUrl      String
+  createdAt    DateTime @default(now())
+
+  task       Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  uploadedBy User @relation(fields: [uploadedById], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+}
+
+model Review {
+  id            String       @id @default(cuid())
+  taskId        String
+  reviewerId    String
+  submittedById String
+  status        ReviewStatus @default(PENDING_REVIEW)
+  rating        Int?
+  feedback      String?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+
+  task        Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  reviewer    User @relation("Reviewer", fields: [reviewerId], references: [id], onDelete: Restrict)
+  submittedBy User @relation("Submitter", fields: [submittedById], references: [id], onDelete: Restrict)
+
+  @@index([taskId])
+  @@index([status])
+}
+
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String
+  type      NotificationType
+  title     String
+  body      String
+  read      Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([read])
+}
+
+model Performance {
+  id         String   @id @default(cuid())
+  userId     String
+  projectId  String
+  score      Int      @default(0)
+  completed  Int      @default(0)
+  late       Int      @default(0)
+  pending    Int      @default(0)
+  attendance Int      @default(100)
+  points     Int      @default(0)
+  rating     Float    @default(0)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, projectId])
+  @@index([userId])
+  @@index([projectId])
+}
+
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String?
+  action     String
+  targetType String
+  targetId   String?
+  details    String?
+  createdAt  DateTime @default(now())
+
+  actor User? @relation("AuditActor", fields: [actorId], references: [id], onDelete: SetNull)
+
+  @@index([actorId])
+  @@index([targetType])
+  @@index([createdAt])
+}
