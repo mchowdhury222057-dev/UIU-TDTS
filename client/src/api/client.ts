@@ -8,7 +8,20 @@ export class ApiClientError extends Error {
   }
 }
 
+// Demo mode (npm run dev:demo): every request is served from an in-memory
+// mock "backend" instead of hitting the real Express API, so the frontend
+// can run and be presented with no server/database at all. See src/mocks/.
+// Off (undefined/false) in every normal dev/build, so this branch never
+// runs against the real app.
+const MOCK_MODE = import.meta.env.VITE_MOCK_MODE === "true";
+
 async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+  if (MOCK_MODE) {
+    const { mockRequest } = await import("../mocks/router");
+    const body = typeof options.body === "string" ? JSON.parse(options.body) : undefined;
+    return mockRequest<T>(options.method ?? "GET", path, body);
+  }
+
   const res = await fetch(`/api${path}`, {
     ...options,
     credentials: "include",

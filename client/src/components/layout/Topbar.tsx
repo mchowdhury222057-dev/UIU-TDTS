@@ -23,6 +23,8 @@ export function Topbar({ title, onOpenMobileSidebar }: { title: string; onOpenMo
 
   if (!user) return null;
 
+  const isDemoMode = import.meta.env.VITE_MOCK_MODE === "true";
+
   return (
     <header className="sticky top-0 z-20 flex h-16 items-center gap-3 border-b border-border bg-white/80 px-4 backdrop-blur md:px-6">
       <button
@@ -46,6 +48,14 @@ export function Topbar({ title, onOpenMobileSidebar }: { title: string; onOpenMo
       </div>
 
       <div className="ml-auto flex items-center gap-2 md:gap-3">
+        {isDemoMode && (
+          <span
+            title="Running on local mock data — no backend or database connected"
+            className="hidden rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 sm:inline-block"
+          >
+            Demo Mode
+          </span>
+        )}
         <span className="hidden rounded-full bg-accent px-3 py-1 font-mono-data text-xs font-medium text-primary sm:inline-block">
           {SEMESTER}
         </span>
