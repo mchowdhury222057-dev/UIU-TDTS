@@ -280,7 +280,7 @@ async function main() {
 
     // Ravens / Library Recommendation Engine
     { title: "Data pipeline for borrowing history", description: "ETL pipeline pulling library circulation data.", priority: TaskPriority.HIGH, status: TaskStatus.STARTED, assigneeId: omar.id, projectId: libraryProject.id, teamId: ravens.id, dueDateOffset: 9, progress: 35, tags: ["data"] },
-    { title: "Recommendation model prototype", description: "Baseline collaborative-filtering recommendation model.", priority: TaskPriority.CRITICAL, status: TaskStatus.TODO, assigneeId: ayesha.id, projectId: libraryProject.id, teamId: ravens.id, dueDateOffset: 18, progress: 0, tags: ["ml"] },
+    { title: "Recommendation model prototype", description: "Baseline collaborative-filtering recommendation model.", priority: TaskPriority.URGENT, status: TaskStatus.TODO, assigneeId: ayesha.id, projectId: libraryProject.id, teamId: ravens.id, dueDateOffset: 18, progress: 0, tags: ["ml"] },
     { title: "Literature review on recommender systems", description: "Summarize relevant academic papers for the approach section.", priority: TaskPriority.MEDIUM, status: TaskStatus.REVIEW, assigneeId: nadia.id, projectId: libraryProject.id, teamId: ravens.id, dueDateOffset: -2, progress: 100, tags: ["research"] },
     { title: "Project proposal document", description: "Formal proposal document for supervisor sign-off.", priority: TaskPriority.HIGH, status: TaskStatus.COMPLETED, assigneeId: ayesha.id, projectId: libraryProject.id, teamId: ravens.id, dueDateOffset: -25, progress: 100, tags: ["docs"] },
   ];
