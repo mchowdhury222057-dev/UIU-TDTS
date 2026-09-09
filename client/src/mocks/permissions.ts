@@ -4,7 +4,7 @@
 
 import type { PermissionKey, PermissionMatrix, Role, User } from "../types";
 import { store } from "./store";
-import type { RawPerformance, RawProject, RawTask, RawTeam } from "./seedData";
+import type { RawPerformance, RawProject, RawSprint, RawTask, RawTeam } from "./seedData";
 
 export function canRegisterAsRole(role: Role): boolean {
   return role === "STUDENT" || role === "LEADER";
@@ -51,6 +51,29 @@ export function projectVisible(user: User, project: RawProject): boolean {
     default:
       return false;
   }
+}
+
+export function canCreateSprint(user: User): boolean {
+  return user.role === "SUPER_ADMIN" || user.role === "FACULTY";
+}
+
+export function canEditSprint(user: User, sprint: RawSprint): boolean {
+  if (user.role === "SUPER_ADMIN") return true;
+  if (user.role === "FACULTY") {
+    const project = store.projects.find((p) => p.id === sprint.projectId);
+    return sprint.createdById === user.id || project?.supervisorId === user.id || project?.createdById === user.id;
+  }
+  return false;
+}
+
+export function canDeleteSprint(user: User, sprint: RawSprint): boolean {
+  return canEditSprint(user, sprint);
+}
+
+export function sprintVisible(user: User, sprint: RawSprint): boolean {
+  const project = store.projects.find((p) => p.id === sprint.projectId);
+  if (!project) return false;
+  return projectVisible(user, project);
 }
 
 export function canCreateTeam(user: User): boolean {
@@ -180,7 +203,7 @@ export function reviewVisible(user: User, review: { taskId: string; submittedByI
 }
 
 export function canReviewTask(user: User): boolean {
-  return user.role === "SUPER_ADMIN" || user.role === "FACULTY" || user.role === "TA";
+  return user.role === "SUPER_ADMIN";
 }
 
 export function canApproveTask(user: User): boolean {
@@ -219,8 +242,8 @@ export function canDeleteUser(actor: User, target: User): { allowed: boolean; re
 
 export const PERMISSION_MATRIX: PermissionMatrix = {
   SUPER_ADMIN: { create: true, edit: true, delete: true, assign: true, review: true, approve: true, export: true, manageUsers: true, manageRoles: true, manageReports: true },
-  FACULTY: { create: true, edit: true, delete: true, assign: true, review: true, approve: true, export: true, manageUsers: false, manageRoles: false, manageReports: true },
-  TA: { create: true, edit: false, delete: false, assign: true, review: true, approve: true, export: true, manageUsers: false, manageRoles: false, manageReports: false },
+  FACULTY: { create: true, edit: true, delete: true, assign: true, review: false, approve: false, export: true, manageUsers: false, manageRoles: false, manageReports: true },
+  TA: { create: true, edit: false, delete: false, assign: true, review: false, approve: false, export: true, manageUsers: false, manageRoles: false, manageReports: false },
   LEADER: { create: true, edit: false, delete: false, assign: true, review: false, approve: false, export: false, manageUsers: false, manageRoles: false, manageReports: false },
   STUDENT: { create: true, edit: false, delete: false, assign: false, review: false, approve: false, export: false, manageUsers: false, manageRoles: false, manageReports: false },
 };

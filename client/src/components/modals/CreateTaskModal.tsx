@@ -1,10 +1,11 @@
 import { FormEvent, useEffect, useMemo, useState } from "react";
 import { ApiClientError } from "../../api/client";
 import { projectsApi } from "../../api/projects";
+import { sprintsApi } from "../../api/sprints";
 import { tasksApi } from "../../api/tasks";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
-import type { Project, TaskPriority, TaskStatus, User } from "../../types";
+import type { Project, Sprint, TaskPriority, TaskStatus, User } from "../../types";
 import { Field, Input, PrimaryButton, SecondaryButton, Select } from "../ui/Form";
 import { Modal } from "../ui/Modal";
 
@@ -15,17 +16,20 @@ interface Props {
   defaultProjectId?: string;
   defaultTeamId?: string;
   defaultStatus?: TaskStatus;
+  defaultSprintId?: string;
 }
 
-export function CreateTaskModal({ isOpen, onClose, onCreated, defaultProjectId, defaultTeamId, defaultStatus }: Props) {
+export function CreateTaskModal({ isOpen, onClose, onCreated, defaultProjectId, defaultTeamId, defaultStatus, defaultSprintId }: Props) {
   const { user } = useAuth();
   const { showToast } = useToast();
   const [projects, setProjects] = useState<Project[]>([]);
+  const [sprints, setSprints] = useState<Sprint[]>([]);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState<TaskPriority>("MEDIUM");
   const [projectId, setProjectId] = useState("");
   const [teamId, setTeamId] = useState("");
+  const [sprintId, setSprintId] = useState("");
   const [assigneeId, setAssigneeId] = useState("");
   const [dueDate, setDueDate] = useState("");
   const [tags, setTags] = useState("");
@@ -34,17 +38,20 @@ export function CreateTaskModal({ isOpen, onClose, onCreated, defaultProjectId, 
 
   useEffect(() => {
     if (!isOpen) return;
-    projectsApi.list().then((list) => {
-      setProjects(list);
-      const initialProjectId = defaultProjectId || list[0]?.id || "";
+    Promise.all([projectsApi.list(), sprintsApi.list()]).then(([projectList, sprintList]) => {
+      setProjects(projectList);
+      setSprints(sprintList);
+      const initialProjectId = defaultProjectId || projectList[0]?.id || "";
       setProjectId(initialProjectId);
     });
     setTeamId(defaultTeamId || "");
+    setSprintId(defaultSprintId || "");
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isOpen, defaultProjectId, defaultTeamId]);
+  }, [isOpen, defaultProjectId, defaultTeamId, defaultSprintId]);
 
   const selectedProject = projects.find((p) => p.id === projectId);
   const availableTeams = selectedProject?.teams ?? [];
+  const availableSprints = sprints.filter((s) => s.projectId === projectId);
 
   const assigneeOptions: User[] = useMemo(() => {
     if (!user) return [];
@@ -93,6 +100,7 @@ export function CreateTaskModal({ isOpen, onClose, onCreated, defaultProjectId, 
         assigneeId: assigneeId || undefined,
         projectId,
         teamId: teamId || undefined,
+        sprintId: sprintId || undefined,
         dueDate: dueDate ? new Date(dueDate).toISOString() : undefined,
         tags: tags
           .split(",")
@@ -122,7 +130,7 @@ export function CreateTaskModal({ isOpen, onClose, onCreated, defaultProjectId, 
         </Field>
         <div className="grid grid-cols-2 gap-4">
           <Field label="Project" required>
-            <Select value={projectId} onChange={(e) => { setProjectId(e.target.value); setTeamId(""); }}>
+            <Select value={projectId} onChange={(e) => { setProjectId(e.target.value); setTeamId(""); setSprintId(""); }}>
               {projects.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
@@ -141,6 +149,16 @@ export function CreateTaskModal({ isOpen, onClose, onCreated, defaultProjectId, 
             </Select>
           </Field>
         </div>
+        <Field label="Sprint">
+          <Select value={sprintId} onChange={(e) => setSprintId(e.target.value)}>
+            <option value="">No sprint (backlog)</option>
+            {availableSprints.map((s) => (
+              <option key={s.id} value={s.id}>
+                {s.name}
+              </option>
+            ))}
+          </Select>
+        </Field>
         <div className="grid grid-cols-2 gap-4">
           <Field label="Priority">
             <Select value={priority} onChange={(e) => setPriority(e.target.value as TaskPriority)}>

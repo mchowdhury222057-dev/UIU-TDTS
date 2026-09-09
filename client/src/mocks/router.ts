@@ -13,6 +13,7 @@ import {
   hydratePerformance,
   hydrateProject,
   hydrateReview,
+  hydrateSprint,
   hydrateTask,
   listUsers,
   nextId,
@@ -265,8 +266,66 @@ export async function mockRequest<T>(method: string, path: string, body: unknown
     store.teams = store.teams.filter((t) => t.projectId !== raw.id);
     store.teamMembers = store.teamMembers.filter((m) => !teamIds.includes(m.teamId));
     store.tasks = store.tasks.filter((t) => t.projectId !== raw.id);
+    store.sprints = store.sprints.filter((s) => s.projectId !== raw.id);
     store.projects = store.projects.filter((x) => x.id !== raw.id);
     store.auditLogs.unshift({ id: nextId("al"), actorId: user.id, action: "PROJECT_DELETE", targetType: "Project", targetId: raw.id, details: JSON.stringify({ name: raw.name }), createdAt: new Date().toISOString() });
+    persist();
+    return null as T;
+  }
+
+  // ---------- SPRINTS ----------
+  if (method === "GET" && p === "/sprints") {
+    return store.sprints.filter((s) => perm.sprintVisible(user, s)).map((s) => hydrateSprint(s, { withTasks: true })) as T;
+  }
+  if (method === "POST" && p === "/sprints") {
+    if (!perm.canCreateSprint(user)) forbidden();
+    const project = store.projects.find((x) => x.id === b.projectId);
+    if (!project) badRequest("Selected project does not exist.");
+    const id = nextId("sp");
+    const raw = {
+      id,
+      name: b.name,
+      goal: b.goal ?? null,
+      projectId: b.projectId,
+      status: b.status ?? "PLANNING",
+      startDate: b.startDate,
+      endDate: b.endDate,
+      createdById: user.id,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    } as const;
+    store.sprints.push(raw);
+    store.auditLogs.unshift({ id: nextId("al"), actorId: user.id, action: "SPRINT_CREATE", targetType: "Sprint", targetId: id, details: JSON.stringify({ name: raw.name, projectId: raw.projectId }), createdAt: new Date().toISOString() });
+    persist();
+    return hydrateSprint(store.sprints.find((s) => s.id === id)!, { withTasks: true }) as T;
+  }
+  if ((params = method === "GET" ? match("/sprints/:id", p) : null)) {
+    const raw = store.sprints.find((x) => x.id === params!.id);
+    if (!raw || !perm.sprintVisible(user, raw)) notFound("Sprint not found");
+    return hydrateSprint(raw, { withTasks: true }) as T;
+  }
+  if ((params = method === "PATCH" ? match("/sprints/:id", p) : null)) {
+    const raw = store.sprints.find((x) => x.id === params!.id);
+    if (!raw) notFound("Sprint not found");
+    if (!perm.canEditSprint(user, raw)) forbidden();
+    if (b.name !== undefined) raw.name = b.name;
+    if (b.goal !== undefined) raw.goal = b.goal;
+    if (b.status !== undefined) raw.status = b.status;
+    if (b.startDate !== undefined) raw.startDate = b.startDate;
+    if (b.endDate !== undefined) raw.endDate = b.endDate;
+    raw.updatedAt = new Date().toISOString();
+    persist();
+    return hydrateSprint(raw, { withTasks: true }) as T;
+  }
+  if ((params = method === "DELETE" ? match("/sprints/:id", p) : null)) {
+    const raw = store.sprints.find((x) => x.id === params!.id);
+    if (!raw) notFound("Sprint not found");
+    if (!perm.canDeleteSprint(user, raw)) forbidden();
+    store.tasks.forEach((t) => {
+      if (t.sprintId === raw.id) t.sprintId = null;
+    });
+    store.sprints = store.sprints.filter((x) => x.id !== raw.id);
+    store.auditLogs.unshift({ id: nextId("al"), actorId: user.id, action: "SPRINT_DELETE", targetType: "Sprint", targetId: raw.id, details: JSON.stringify({ name: raw.name }), createdAt: new Date().toISOString() });
     persist();
     return null as T;
   }
@@ -344,6 +403,10 @@ export async function mockRequest<T>(method: string, path: string, body: unknown
     }
     const assigneeId = b.assigneeId || user.id;
     if (!perm.canAssignTaskTo(user, assigneeId, team ?? null)) forbidden("You are not allowed to assign tasks to this user.");
+    if (b.sprintId) {
+      const sprint = store.sprints.find((s) => s.id === b.sprintId);
+      if (!sprint || sprint.projectId !== b.projectId) badRequest("Selected sprint does not belong to the selected project.");
+    }
     const id = nextId("t");
     const raw: RawTask = {
       id,
@@ -354,6 +417,7 @@ export async function mockRequest<T>(method: string, path: string, body: unknown
       assigneeId,
       projectId: b.projectId,
       teamId: b.teamId ?? null,
+      sprintId: b.sprintId ?? null,
       dueDate: b.dueDate ?? null,
       progress: 0,
       tags: b.tags ?? [],
@@ -399,6 +463,10 @@ export async function mockRequest<T>(method: string, path: string, body: unknown
         store.notifications.unshift({ id: nextId("n"), userId: b.assigneeId, type: "TASK", title: "New task assigned", body: `You have been assigned to "${raw.title}".`, read: false, createdAt: new Date().toISOString() });
       }
     }
+    if (b.sprintId !== undefined && b.sprintId) {
+      const sprint = store.sprints.find((s) => s.id === b.sprintId);
+      if (!sprint || sprint.projectId !== raw.projectId) badRequest("Selected sprint does not belong to the selected project.");
+    }
     // Keep progress and status in sync, same as the real backend: hitting
     // 100% completes the task on its own, dropping below un-completes it.
     const previousStatus = raw.status;
@@ -417,6 +485,7 @@ export async function mockRequest<T>(method: string, path: string, body: unknown
       ...(b.priority !== undefined && { priority: b.priority }),
       ...(status !== undefined && { status }),
       ...(b.assigneeId !== undefined && { assigneeId: b.assigneeId }),
+      ...(b.sprintId !== undefined && { sprintId: b.sprintId }),
       ...(b.dueDate !== undefined && { dueDate: b.dueDate }),
       ...(b.progress !== undefined && { progress: b.progress }),
       ...(b.tags !== undefined && { tags: b.tags }),

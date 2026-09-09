@@ -17,6 +17,7 @@ const taskInclude = {
   createdBy: true,
   project: true,
   team: { include: { members: true } },
+  sprint: true,
   _count: { select: { comments: true } },
 } satisfies Prisma.TaskInclude;
 
@@ -77,10 +78,19 @@ async function assertProjectAndTeamAccessible(projectId: string, teamId: string 
   return { project, team: null };
 }
 
+async function assertSprintAccessible(sprintId: string | undefined, projectId: string) {
+  if (!sprintId) return;
+  const sprint = await prisma.sprint.findUnique({ where: { id: sprintId } });
+  if (!sprint || sprint.projectId !== projectId) {
+    throw ApiError.badRequest("Selected sprint does not belong to the selected project.");
+  }
+}
+
 export async function createTask(user: User, input: CreateTaskInput) {
   if (!canCreateTask(user)) throw ApiError.forbidden();
 
   const { team } = await assertProjectAndTeamAccessible(input.projectId, input.teamId);
+  await assertSprintAccessible(input.sprintId, input.projectId);
 
   const assigneeId = input.assigneeId || user.id;
   if (!canAssignTaskTo(user, assigneeId, team)) {
@@ -97,6 +107,7 @@ export async function createTask(user: User, input: CreateTaskInput) {
         assigneeId,
         projectId: input.projectId,
         teamId: input.teamId,
+        sprintId: input.sprintId,
         dueDate: input.dueDate,
         tags: input.tags,
         createdById: user.id,
@@ -136,6 +147,10 @@ export async function updateTask(user: User, id: string, input: UpdateTaskInput)
     }
   }
 
+  if (input.sprintId !== undefined) {
+    await assertSprintAccessible(input.sprintId || undefined, task.projectId);
+  }
+
   // Keep progress and status from disagreeing with each other: reaching 100%
   // (e.g. an assignee dragging their own progress slider to done) marks the
   // task Completed on its own, and pulling it back below 100% un-completes
@@ -159,6 +174,7 @@ export async function updateTask(user: User, id: string, input: UpdateTaskInput)
         priority: input.priority,
         status,
         assigneeId: input.assigneeId,
+        sprintId: input.sprintId,
         dueDate: input.dueDate,
         progress: input.progress,
         tags: input.tags,

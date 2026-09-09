@@ -67,3 +67,9 @@ export const STATUS_COLORS: Record<string, string> = {
   COMPLETED: "bg-blue-50 text-blue-700",
   CANCELLED: "bg-red-50 text-red-700",
 };
+
+export const SPRINT_STATUS_COLORS: Record<string, string> = {
+  PLANNING: "bg-slate-100 text-slate-700",
+  ACTIVE: "bg-emerald-50 text-emerald-700",
+  COMPLETED: "bg-blue-50 text-blue-700",
+};

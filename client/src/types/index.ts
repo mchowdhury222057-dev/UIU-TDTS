@@ -14,6 +14,7 @@ export type TaskStatus =
   | "CANCELLED";
 export type ReviewStatus = "PENDING_REVIEW" | "APPROVED" | "CHANGES_REQUESTED" | "REJECTED";
 export type NotificationType = "TASK" | "DEADLINE" | "REVIEW" | "MENTION" | "UPLOAD";
+export type SprintStatus = "PLANNING" | "ACTIVE" | "COMPLETED";
 
 export interface User {
   id: string;
@@ -117,6 +118,7 @@ export interface Task {
   assigneeId: string | null;
   projectId: string;
   teamId: string | null;
+  sprintId: string | null;
   dueDate: string | null;
   progress: number;
   tags: string[];
@@ -127,10 +129,27 @@ export interface Task {
   createdBy: User;
   project: Project;
   team: (Team & { members: TeamMember[] }) | null;
+  sprint?: Sprint | null;
   comments?: TaskComment[];
   attachments?: TaskAttachment[];
   reviews?: Review[];
   _count?: { comments: number };
+}
+
+export interface Sprint {
+  id: string;
+  name: string;
+  goal: string | null;
+  projectId: string;
+  status: SprintStatus;
+  startDate: string;
+  endDate: string;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+  project?: Project;
+  createdBy?: User;
+  tasks?: Task[];
 }
 
 export interface Notification {

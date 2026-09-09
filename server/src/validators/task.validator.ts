@@ -9,12 +9,14 @@ export const createTaskSchema = z.object({
   assigneeId: z.string().optional(),
   projectId: z.string().min(1, "Project is required"),
   teamId: z.string().optional(),
+  sprintId: z.string().optional(),
   dueDate: z.coerce.date().optional(),
   tags: z.array(z.string()).default([]),
 });
 
 export const updateTaskSchema = createTaskSchema.partial().extend({
   progress: z.number().int().min(0).max(100).optional(),
+  sprintId: z.string().nullable().optional(),
 });
 
 export const updateTaskStatusSchema = z.object({

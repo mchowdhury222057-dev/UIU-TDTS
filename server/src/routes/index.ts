@@ -12,6 +12,7 @@ import dashboardRoutes from "./dashboard.routes";
 import auditLogRoutes from "./auditLog.routes";
 import permissionRoutes from "./permission.routes";
 import helpRoutes from "./help.routes";
+import sprintRoutes from "./sprint.routes";
 
 const router = Router();
 
@@ -28,5 +29,6 @@ router.use("/dashboard", dashboardRoutes);
 router.use("/audit-logs", auditLogRoutes);
 router.use("/permissions", permissionRoutes);
 router.use("/help", helpRoutes);
+router.use("/sprints", sprintRoutes);
 
 export default router;

@@ -1,4 +1,4 @@
-import { Department, PrismaClient, Priority, ProjectStatus, Role, TaskPriority, TaskStatus, ReviewStatus, NotificationType } from "@prisma/client";
+import { Department, PrismaClient, Priority, ProjectStatus, Role, TaskPriority, TaskStatus, ReviewStatus, NotificationType, SprintStatus } from "@prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -26,6 +26,7 @@ async function main() {
   await prisma.taskComment.deleteMany();
   await prisma.taskAttachment.deleteMany();
   await prisma.task.deleteMany();
+  await prisma.sprint.deleteMany();
   await prisma.teamMember.deleteMany();
   await prisma.team.deleteMany();
   await prisma.project.deleteMany();
@@ -244,6 +245,53 @@ async function main() {
     },
   });
 
+  console.log("Creating sprints...");
+
+  const attendanceSprint1 = await prisma.sprint.create({
+    data: {
+      name: "Sprint 1: Core Recognition Pipeline",
+      goal: "Stand up the database schema and get face-recognition capture working end to end.",
+      projectId: attendanceProject.id,
+      status: SprintStatus.COMPLETED,
+      startDate: daysFromNow(-35),
+      endDate: daysFromNow(-21),
+      createdById: faculty.id,
+    },
+  });
+  const attendanceSprint2 = await prisma.sprint.create({
+    data: {
+      name: "Sprint 2: Dashboard & Reporting",
+      goal: "Ship the instructor dashboard, student self-check-in, and CI pipeline.",
+      projectId: attendanceProject.id,
+      status: SprintStatus.ACTIVE,
+      startDate: daysFromNow(-7),
+      endDate: daysFromNow(7),
+      createdById: faculty.id,
+    },
+  });
+  const eventSprint1 = await prisma.sprint.create({
+    data: {
+      name: "Sprint 1: MVP Registration & Ticketing",
+      goal: "Let clubs create events and let students RSVP end to end.",
+      projectId: eventPortalProject.id,
+      status: SprintStatus.ACTIVE,
+      startDate: daysFromNow(-5),
+      endDate: daysFromNow(9),
+      createdById: admin.id,
+    },
+  });
+  const librarySprint1 = await prisma.sprint.create({
+    data: {
+      name: "Sprint 1: Research & Data Foundations",
+      goal: "Get borrowing-history data flowing and a baseline recommendation model started.",
+      projectId: libraryProject.id,
+      status: SprintStatus.PLANNING,
+      startDate: daysFromNow(3),
+      endDate: daysFromNow(17),
+      createdById: faculty.id,
+    },
+  });
+
   console.log("Creating tasks...");
 
   interface TaskSeed {
@@ -254,6 +302,7 @@ async function main() {
     assigneeId: string;
     projectId: string;
     teamId: string;
+    sprintId?: string;
     dueDateOffset: number;
     progress: number;
     tags: string[];
@@ -261,27 +310,27 @@ async function main() {
 
   const taskSeeds: TaskSeed[] = [
     // Falcons / Attendance System
-    { title: "Design database schema for attendance logs", description: "Model students, sessions, and attendance records.", priority: TaskPriority.HIGH, status: TaskStatus.COMPLETED, assigneeId: zaid.id, projectId: attendanceProject.id, teamId: falcons.id, dueDateOffset: -20, progress: 100, tags: ["backend", "database"] },
-    { title: "Build face-recognition capture module", description: "Integrate camera capture with the recognition pipeline.", priority: TaskPriority.URGENT, status: TaskStatus.IN_PROGRESS, assigneeId: zaid.id, projectId: attendanceProject.id, teamId: falcons.id, dueDateOffset: 5, progress: 60, tags: ["backend", "ml"] },
-    { title: "Attendance dashboard UI", description: "Build the instructor-facing dashboard showing live attendance.", priority: TaskPriority.HIGH, status: TaskStatus.REVIEW, assigneeId: omar.id, projectId: attendanceProject.id, teamId: falcons.id, dueDateOffset: 2, progress: 90, tags: ["frontend", "ui"] },
-    { title: "Student self-check-in page", description: "Mobile-friendly page for students to confirm their own attendance.", priority: TaskPriority.MEDIUM, status: TaskStatus.TESTING, assigneeId: omar.id, projectId: attendanceProject.id, teamId: falcons.id, dueDateOffset: -3, progress: 85, tags: ["frontend"] },
+    { title: "Design database schema for attendance logs", description: "Model students, sessions, and attendance records.", priority: TaskPriority.HIGH, status: TaskStatus.COMPLETED, assigneeId: zaid.id, projectId: attendanceProject.id, teamId: falcons.id, sprintId: attendanceSprint1.id, dueDateOffset: -20, progress: 100, tags: ["backend", "database"] },
+    { title: "Build face-recognition capture module", description: "Integrate camera capture with the recognition pipeline.", priority: TaskPriority.URGENT, status: TaskStatus.IN_PROGRESS, assigneeId: zaid.id, projectId: attendanceProject.id, teamId: falcons.id, sprintId: attendanceSprint2.id, dueDateOffset: 5, progress: 60, tags: ["backend", "ml"] },
+    { title: "Attendance dashboard UI", description: "Build the instructor-facing dashboard showing live attendance.", priority: TaskPriority.HIGH, status: TaskStatus.REVIEW, assigneeId: omar.id, projectId: attendanceProject.id, teamId: falcons.id, sprintId: attendanceSprint2.id, dueDateOffset: 2, progress: 90, tags: ["frontend", "ui"] },
+    { title: "Student self-check-in page", description: "Mobile-friendly page for students to confirm their own attendance.", priority: TaskPriority.MEDIUM, status: TaskStatus.TESTING, assigneeId: omar.id, projectId: attendanceProject.id, teamId: falcons.id, sprintId: attendanceSprint2.id, dueDateOffset: -3, progress: 85, tags: ["frontend"] },
     { title: "Weekly attendance report export", description: "Generate CSV/PDF export of weekly attendance summaries.", priority: TaskPriority.LOW, status: TaskStatus.TODO, assigneeId: ayesha.id, projectId: attendanceProject.id, teamId: falcons.id, dueDateOffset: 12, progress: 0, tags: ["reports"] },
-    { title: "Set up CI pipeline", description: "Automated lint/test/build pipeline for the attendance repo.", priority: TaskPriority.MEDIUM, status: TaskStatus.STARTED, assigneeId: zaid.id, projectId: attendanceProject.id, teamId: falcons.id, dueDateOffset: 8, progress: 25, tags: ["devops"] },
+    { title: "Set up CI pipeline", description: "Automated lint/test/build pipeline for the attendance repo.", priority: TaskPriority.MEDIUM, status: TaskStatus.STARTED, assigneeId: zaid.id, projectId: attendanceProject.id, teamId: falcons.id, sprintId: attendanceSprint2.id, dueDateOffset: 8, progress: 25, tags: ["devops"] },
     { title: "Draft privacy policy for facial data", description: "Legal/ethics writeup for biometric data handling.", priority: TaskPriority.MEDIUM, status: TaskStatus.BACKLOG, assigneeId: ayesha.id, projectId: attendanceProject.id, teamId: falcons.id, dueDateOffset: 25, progress: 0, tags: ["docs"] },
     { title: "Legacy barcode scanner integration", description: "Superseded by facial recognition approach.", priority: TaskPriority.LOW, status: TaskStatus.CANCELLED, assigneeId: omar.id, projectId: attendanceProject.id, teamId: falcons.id, dueDateOffset: -10, progress: 0, tags: ["hardware"] },
 
     // Phoenix / Event Portal
-    { title: "Event creation form", description: "Multi-step form for clubs to create new events.", priority: TaskPriority.HIGH, status: TaskStatus.COMPLETED, assigneeId: bilal.id, projectId: eventPortalProject.id, teamId: phoenix.id, dueDateOffset: -15, progress: 100, tags: ["frontend"] },
-    { title: "RSVP and ticketing API", description: "Endpoints for registering, cancelling, and listing RSVPs.", priority: TaskPriority.HIGH, status: TaskStatus.IN_PROGRESS, assigneeId: bilal.id, projectId: eventPortalProject.id, teamId: phoenix.id, dueDateOffset: 6, progress: 50, tags: ["backend"] },
-    { title: "QA test plan for registration flow", description: "Write and execute test cases for the RSVP flow.", priority: TaskPriority.MEDIUM, status: TaskStatus.REVIEW, assigneeId: nadia.id, projectId: eventPortalProject.id, teamId: phoenix.id, dueDateOffset: -1, progress: 80, tags: ["qa"] },
-    { title: "Email notification templates", description: "Design confirmation and reminder email templates.", priority: TaskPriority.LOW, status: TaskStatus.TESTING, assigneeId: nadia.id, projectId: eventPortalProject.id, teamId: phoenix.id, dueDateOffset: 3, progress: 70, tags: ["design"] },
+    { title: "Event creation form", description: "Multi-step form for clubs to create new events.", priority: TaskPriority.HIGH, status: TaskStatus.COMPLETED, assigneeId: bilal.id, projectId: eventPortalProject.id, teamId: phoenix.id, sprintId: eventSprint1.id, dueDateOffset: -15, progress: 100, tags: ["frontend"] },
+    { title: "RSVP and ticketing API", description: "Endpoints for registering, cancelling, and listing RSVPs.", priority: TaskPriority.HIGH, status: TaskStatus.IN_PROGRESS, assigneeId: bilal.id, projectId: eventPortalProject.id, teamId: phoenix.id, sprintId: eventSprint1.id, dueDateOffset: 6, progress: 50, tags: ["backend"] },
+    { title: "QA test plan for registration flow", description: "Write and execute test cases for the RSVP flow.", priority: TaskPriority.MEDIUM, status: TaskStatus.REVIEW, assigneeId: nadia.id, projectId: eventPortalProject.id, teamId: phoenix.id, sprintId: eventSprint1.id, dueDateOffset: -1, progress: 80, tags: ["qa"] },
+    { title: "Email notification templates", description: "Design confirmation and reminder email templates.", priority: TaskPriority.LOW, status: TaskStatus.TESTING, assigneeId: nadia.id, projectId: eventPortalProject.id, teamId: phoenix.id, sprintId: eventSprint1.id, dueDateOffset: 3, progress: 70, tags: ["design"] },
     { title: "Club admin permissions", description: "Role-based permissions so club admins can only manage their own events.", priority: TaskPriority.MEDIUM, status: TaskStatus.TODO, assigneeId: sana.id, projectId: eventPortalProject.id, teamId: phoenix.id, dueDateOffset: 15, progress: 0, tags: ["backend", "auth"] },
     { title: "Event calendar view", description: "Monthly calendar view of upcoming campus events.", priority: TaskPriority.MEDIUM, status: TaskStatus.STARTED, assigneeId: bilal.id, projectId: eventPortalProject.id, teamId: phoenix.id, dueDateOffset: 10, progress: 30, tags: ["frontend"] },
     { title: "Analytics dashboard for club admins", description: "Show attendance and engagement metrics per event.", priority: TaskPriority.LOW, status: TaskStatus.BACKLOG, assigneeId: sana.id, projectId: eventPortalProject.id, teamId: phoenix.id, dueDateOffset: 30, progress: 0, tags: ["analytics"] },
 
     // Ravens / Library Recommendation Engine
-    { title: "Data pipeline for borrowing history", description: "ETL pipeline pulling library circulation data.", priority: TaskPriority.HIGH, status: TaskStatus.STARTED, assigneeId: omar.id, projectId: libraryProject.id, teamId: ravens.id, dueDateOffset: 9, progress: 35, tags: ["data"] },
-    { title: "Recommendation model prototype", description: "Baseline collaborative-filtering recommendation model.", priority: TaskPriority.URGENT, status: TaskStatus.TODO, assigneeId: ayesha.id, projectId: libraryProject.id, teamId: ravens.id, dueDateOffset: 18, progress: 0, tags: ["ml"] },
+    { title: "Data pipeline for borrowing history", description: "ETL pipeline pulling library circulation data.", priority: TaskPriority.HIGH, status: TaskStatus.STARTED, assigneeId: omar.id, projectId: libraryProject.id, teamId: ravens.id, sprintId: librarySprint1.id, dueDateOffset: 9, progress: 35, tags: ["data"] },
+    { title: "Recommendation model prototype", description: "Baseline collaborative-filtering recommendation model.", priority: TaskPriority.URGENT, status: TaskStatus.TODO, assigneeId: ayesha.id, projectId: libraryProject.id, teamId: ravens.id, sprintId: librarySprint1.id, dueDateOffset: 18, progress: 0, tags: ["ml"] },
     { title: "Literature review on recommender systems", description: "Summarize relevant academic papers for the approach section.", priority: TaskPriority.MEDIUM, status: TaskStatus.REVIEW, assigneeId: nadia.id, projectId: libraryProject.id, teamId: ravens.id, dueDateOffset: -2, progress: 100, tags: ["research"] },
     { title: "Project proposal document", description: "Formal proposal document for supervisor sign-off.", priority: TaskPriority.HIGH, status: TaskStatus.COMPLETED, assigneeId: ayesha.id, projectId: libraryProject.id, teamId: ravens.id, dueDateOffset: -25, progress: 100, tags: ["docs"] },
   ];
@@ -297,6 +346,7 @@ async function main() {
         assigneeId: t.assigneeId,
         projectId: t.projectId,
         teamId: t.teamId,
+        sprintId: t.sprintId,
         dueDate: daysFromNow(t.dueDateOffset),
         progress: t.progress,
         tags: t.tags,

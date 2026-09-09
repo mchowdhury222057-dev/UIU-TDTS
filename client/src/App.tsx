@@ -10,6 +10,7 @@ import { Projects } from "./pages/app/Projects";
 import { Teams } from "./pages/app/Teams";
 import { Tasks } from "./pages/app/Tasks";
 import { Kanban } from "./pages/app/Kanban";
+import { SprintBoard } from "./pages/app/SprintBoard";
 import { Timeline } from "./pages/app/Timeline";
 import { Performance } from "./pages/app/Performance";
 import { Reviews } from "./pages/app/Reviews";
@@ -35,6 +36,7 @@ function App() {
           <Route path="teams" element={<Teams />} />
           <Route path="tasks" element={<Tasks />} />
           <Route path="kanban" element={<Kanban />} />
+          <Route path="sprints" element={<SprintBoard />} />
           <Route path="timeline" element={<Timeline />} />
           <Route path="performance" element={<Performance />} />
           <Route path="reviews" element={<Reviews />} />

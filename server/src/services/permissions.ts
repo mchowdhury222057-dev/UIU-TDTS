@@ -62,6 +62,30 @@ export function canAccessProject(
   }
 }
 
+// ---------- Sprint ----------
+
+type SprintWithRelations = { createdById: string; project?: Project | null };
+
+export function canCreateSprint(user: User): boolean {
+  return user.role === Role.SUPER_ADMIN || user.role === Role.FACULTY;
+}
+
+export function canEditSprint(user: User, sprint: SprintWithRelations): boolean {
+  if (user.role === Role.SUPER_ADMIN) return true;
+  if (user.role === Role.FACULTY) {
+    return (
+      sprint.createdById === user.id ||
+      sprint.project?.supervisorId === user.id ||
+      sprint.project?.createdById === user.id
+    );
+  }
+  return false;
+}
+
+export function canDeleteSprint(user: User, sprint: SprintWithRelations): boolean {
+  return canEditSprint(user, sprint);
+}
+
 // ---------- Team ----------
 
 export function canCreateTeam(user: User): boolean {
@@ -179,8 +203,11 @@ export function canAccessTask(
 
 // ---------- Reviews ----------
 
+// Only Super Admin gives reviews/ratings. Faculty, TA, Team Leader, and
+// Member can all still see review status/feedback/rating once given
+// (reviewVisibilityWhere below), they just cannot set it themselves.
 export function canReviewTask(user: User): boolean {
-  return user.role === Role.SUPER_ADMIN || user.role === Role.FACULTY || user.role === Role.TA;
+  return user.role === Role.SUPER_ADMIN;
 }
 
 export function canApproveTask(user: User): boolean {
@@ -289,8 +316,8 @@ export const PERMISSION_MATRIX: Record<Role, Record<PermissionKey, boolean>> = {
     edit: true,
     delete: true,
     assign: true,
-    review: true,
-    approve: true,
+    review: false,
+    approve: false,
     export: true,
     manageUsers: false,
     manageRoles: false,
@@ -301,8 +328,8 @@ export const PERMISSION_MATRIX: Record<Role, Record<PermissionKey, boolean>> = {
     edit: false,
     delete: false,
     assign: true,
-    review: true,
-    approve: true,
+    review: false,
+    approve: false,
     export: true,
     manageUsers: false,
     manageRoles: false,

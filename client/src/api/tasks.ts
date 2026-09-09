@@ -9,11 +9,15 @@ export interface CreateTaskPayload {
   assigneeId?: string;
   projectId: string;
   teamId?: string;
+  sprintId?: string;
   dueDate?: string;
   tags: string[];
 }
 
-export type UpdateTaskPayload = Partial<CreateTaskPayload> & { progress?: number };
+export type UpdateTaskPayload = Partial<Omit<CreateTaskPayload, "sprintId">> & {
+  progress?: number;
+  sprintId?: string | null;
+};
 
 export const tasksApi = {
   list: () => api.get<Task[]>("/tasks"),

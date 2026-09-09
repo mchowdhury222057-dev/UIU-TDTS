@@ -2,7 +2,7 @@
 // mutated in place by router.ts and persisted to sessionStorage so a
 // refresh mid-demo doesn't lose anything created during the session.
 
-import type { HelpArticle, Notification, Performance, Project, Review, Task, Team, TeamMember, User } from "../types";
+import type { HelpArticle, Notification, Performance, Project, Review, Sprint, Task, Team, TeamMember, User } from "../types";
 import {
   RawAuditLog,
   RawComment,
@@ -11,6 +11,7 @@ import {
   RawPerformance,
   RawProject,
   RawReview,
+  RawSprint,
   RawTask,
   RawTeam,
   RawTeamMember,
@@ -22,6 +23,7 @@ import {
   rawPerformance,
   rawProjects,
   rawReviews,
+  rawSprints,
   rawTasks,
   rawTeamMembers,
   rawTeams,
@@ -40,13 +42,14 @@ interface Store {
   notifications: RawNotification[];
   auditLogs: RawAuditLog[];
   helpArticles: RawHelpArticle[];
+  sprints: RawSprint[];
   sessionUserId: string | null;
 }
 
 // Bump this whenever the Store shape changes so a stale sessionStorage
 // entry from a previous demo mode version doesn't get loaded with a
 // mismatched shape.
-const STORAGE_KEY = "uiu_tdts_demo_store_v2";
+const STORAGE_KEY = "uiu_tdts_demo_store_v3";
 
 function freshStore(): Store {
   return {
@@ -61,6 +64,7 @@ function freshStore(): Store {
     notifications: structuredClone(rawNotifications),
     auditLogs: structuredClone(rawAuditLogs),
     helpArticles: structuredClone(rawHelpArticles),
+    sprints: structuredClone(rawSprints),
     sessionUserId: null,
   };
 }
@@ -158,12 +162,16 @@ export function hydrateTask(
   const projectRaw = store.projects.find((p) => p.id === raw.projectId)!;
   const teamRaw = raw.teamId ? store.teams.find((t) => t.id === raw.teamId) : undefined;
 
+  const sprintRaw = raw.sprintId ? store.sprints.find((s) => s.id === raw.sprintId) : undefined;
+
   const task: Task = {
     ...raw,
     assignee: raw.assigneeId ? getUser(raw.assigneeId) ?? null : null,
     createdBy: getUser(raw.createdById)!,
     project: hydrateProject(projectRaw),
     team: teamRaw ? { ...hydrateTeam(teamRaw), members: store.teamMembers.filter((m) => m.teamId === teamRaw.id).map(hydrateTeamMember) } : null,
+    // No withTasks here — avoids an infinite task -> sprint -> tasks -> sprint loop.
+    sprint: sprintRaw ? hydrateSprint(sprintRaw) : null,
     _count: { comments: store.comments.filter((c) => c.taskId === raw.id).length },
   };
 
@@ -202,4 +210,16 @@ export function hydrateNotification(raw: RawNotification): Notification {
 
 export function hydrateHelpArticle(raw: RawHelpArticle): HelpArticle {
   return { ...raw, createdBy: getUser(raw.createdById)! };
+}
+
+export function hydrateSprint(raw: RawSprint, opts: { withTasks?: boolean } = {}): Sprint {
+  const sprint: Sprint = {
+    ...raw,
+    project: hydrateProject(store.projects.find((p) => p.id === raw.projectId)!),
+    createdBy: getUser(raw.createdById),
+  };
+  if (opts.withTasks) {
+    sprint.tasks = store.tasks.filter((t) => t.sprintId === raw.id).map((t) => hydrateTask(t));
+  }
+  return sprint;
 }

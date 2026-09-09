@@ -8,6 +8,7 @@ import {
   KanbanSquare,
   LayoutDashboard,
   ListChecks,
+  Repeat2,
   Settings,
   Shield,
   User as UserIcon,
@@ -33,6 +34,7 @@ const ALL_NAV: Record<string, NavItem> = {
   teams: { label: "Teams", path: "/app/teams", icon: Users },
   tasks: { label: "Tasks", path: "/app/tasks", icon: ListChecks },
   kanban: { label: "Kanban Board", path: "/app/kanban", icon: KanbanSquare },
+  sprints: { label: "Sprint Board", path: "/app/sprints", icon: Repeat2 },
   timeline: { label: "Timeline", path: "/app/timeline", icon: CalendarRange },
   performance: { label: "Performance & Ratings", path: "/app/performance", icon: Gauge },
   reviews: { label: "Reviews & Feedback", path: "/app/reviews", icon: ClipboardCheck },
@@ -47,7 +49,7 @@ const ALL_NAV: Record<string, NavItem> = {
 export function getNavSections(role: Role): NavSection[] {
   const workspace: NavItem[] = [ALL_NAV.dashboard];
 
-  const manage: NavItem[] = [ALL_NAV.projects, ALL_NAV.teams, ALL_NAV.tasks, ALL_NAV.kanban];
+  const manage: NavItem[] = [ALL_NAV.projects, ALL_NAV.teams, ALL_NAV.tasks, ALL_NAV.kanban, ALL_NAV.sprints];
   if (role !== "STUDENT") manage.push(ALL_NAV.timeline);
 
   const analytics: NavItem[] = [ALL_NAV.performance, ALL_NAV.reviews];

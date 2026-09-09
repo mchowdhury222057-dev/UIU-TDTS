@@ -1,4 +1,4 @@
-import type { Project, Task, Team, User } from "../types";
+import type { Project, Sprint, Task, Team, User } from "../types";
 
 // Frontend mirror of server/src/services/permissions.ts, used ONLY to decide
 // what to render (hide buttons/pages a user can't use). The backend is the
@@ -45,6 +45,26 @@ export function canDeleteTeam(user: User, team: Team) {
   return canEditTeam(user, team);
 }
 
+export function canCreateSprint(user: User) {
+  return user.role === "SUPER_ADMIN" || user.role === "FACULTY";
+}
+
+export function canEditSprint(user: User, sprint: Sprint) {
+  if (user.role === "SUPER_ADMIN") return true;
+  if (user.role === "FACULTY") {
+    return (
+      sprint.createdById === user.id ||
+      sprint.project?.supervisorId === user.id ||
+      sprint.project?.createdById === user.id
+    );
+  }
+  return false;
+}
+
+export function canDeleteSprint(user: User, sprint: Sprint) {
+  return canEditSprint(user, sprint);
+}
+
 // Same rule the backend applies for both PATCH /tasks/:id and
 // PATCH /tasks/:id/status: only the people who could actually move this
 // task forward can touch its status/progress — notably including the
@@ -59,8 +79,9 @@ export function canChangeTaskStatus(user: User, task: Task) {
   return false;
 }
 
+// Only Super Admin gives reviews/ratings; everyone else can only view them.
 export function canReviewTask(user: User) {
-  return user.role === "SUPER_ADMIN" || user.role === "FACULTY" || user.role === "TA";
+  return user.role === "SUPER_ADMIN";
 }
 
 export function canApproveTask(user: User) {

@@ -9,6 +9,7 @@ const PAGE_TITLES: Record<string, string> = {
   teams: "Teams",
   tasks: "Tasks",
   kanban: "Kanban Board",
+  sprints: "Sprint Board",
   timeline: "Timeline",
   performance: "Performance & Ratings",
   reviews: "Reviews & Feedback",
