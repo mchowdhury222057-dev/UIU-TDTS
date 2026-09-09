@@ -1,16 +1,17 @@
+import { CheckCircle2, Trash2 } from "lucide-react";
 import { FormEvent, useEffect, useState } from "react";
 import { ApiClientError } from "../../api/client";
 import { tasksApi } from "../../api/tasks";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
-import { KANBAN_COLUMNS, PRIORITY_COLORS } from "../../lib/constants";
+import { KANBAN_COLUMNS, PRIORITY_COLORS, TASK_STATUS_LABELS } from "../../lib/constants";
 import { formatDate, timeAgo } from "../../lib/format";
+import { canChangeTaskStatus } from "../../lib/permissions";
 import type { Task } from "../../types";
 import { Avatar } from "../ui/Avatar";
 import { Badge } from "../ui/Badge";
 import { PrimaryButton, Select, TextArea } from "../ui/Form";
 import { Modal } from "../ui/Modal";
-import { Trash2 } from "lucide-react";
 
 export function TaskDetailModal({
   taskId,
@@ -24,6 +25,7 @@ export function TaskDetailModal({
   const { user } = useAuth();
   const { showToast } = useToast();
   const [task, setTask] = useState<Task | null>(null);
+  const [progressValue, setProgressValue] = useState(0);
   const [comment, setComment] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmittingComment, setIsSubmittingComment] = useState(false);
@@ -34,6 +36,7 @@ export function TaskDetailModal({
     try {
       const result = await tasksApi.get(taskId);
       setTask(result);
+      setProgressValue(result.progress);
     } catch (err) {
       showToast(err instanceof ApiClientError ? err.message : "Failed to load task.", "error");
       onClose();
@@ -50,13 +53,31 @@ export function TaskDetailModal({
 
   if (!taskId) return null;
 
+  const editable = Boolean(user && task && canChangeTaskStatus(user, task));
+
+  const applyTaskUpdate = (updated: Task) => {
+    setTask((prev) => (prev ? { ...prev, status: updated.status, progress: updated.progress } : prev));
+    setProgressValue(updated.progress);
+    onChanged();
+  };
+
   const handleStatusChange = async (status: Task["status"]) => {
     try {
       const updated = await tasksApi.updateStatus(taskId, status);
-      setTask((prev) => (prev ? { ...prev, status: updated.status, progress: updated.progress } : prev));
-      onChanged();
+      applyTaskUpdate(updated);
     } catch (err) {
       showToast(err instanceof ApiClientError ? err.message : "Failed to update status.", "error");
+    }
+  };
+
+  const commitProgress = async (value: number) => {
+    if (!task || value === task.progress) return;
+    try {
+      const updated = await tasksApi.update(taskId, { progress: value });
+      applyTaskUpdate(updated);
+    } catch (err) {
+      setProgressValue(task.progress);
+      showToast(err instanceof ApiClientError ? err.message : "Failed to update progress.", "error");
     }
   };
 
@@ -96,17 +117,21 @@ export function TaskDetailModal({
         <div className="space-y-5">
           <div className="flex flex-wrap items-center gap-2">
             <Badge className={PRIORITY_COLORS[task.priority]}>{task.priority}</Badge>
-            <Select
-              value={task.status}
-              onChange={(e) => handleStatusChange(e.target.value as Task["status"])}
-              className="w-auto"
-            >
-              {KANBAN_COLUMNS.map((c) => (
-                <option key={c.status} value={c.status}>
-                  {c.label}
-                </option>
-              ))}
-            </Select>
+            {editable ? (
+              <Select
+                value={task.status}
+                onChange={(e) => handleStatusChange(e.target.value as Task["status"])}
+                className="w-auto"
+              >
+                {KANBAN_COLUMNS.map((c) => (
+                  <option key={c.status} value={c.status}>
+                    {c.label}
+                  </option>
+                ))}
+              </Select>
+            ) : (
+              <Badge>{TASK_STATUS_LABELS[task.status]}</Badge>
+            )}
             {task.tags.map((tag) => (
               <Badge key={tag}>{tag}</Badge>
             ))}
@@ -151,12 +176,37 @@ export function TaskDetailModal({
 
           <div>
             <div className="mb-1 flex items-center justify-between text-xs text-muted-foreground">
-              <span>Progress</span>
-              <span className="font-mono-data">{task.progress}%</span>
+              <span>Progress {editable && <span className="text-foreground/60">— update it yourself as you go</span>}</span>
+              <span className="font-mono-data">{progressValue}%</span>
             </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-              <div className="h-full rounded-full bg-primary" style={{ width: `${task.progress}%` }} />
-            </div>
+            {editable ? (
+              <div className="flex items-center gap-3">
+                <input
+                  type="range"
+                  min={0}
+                  max={100}
+                  step={5}
+                  value={progressValue}
+                  onChange={(e) => setProgressValue(Number(e.target.value))}
+                  onMouseUp={() => commitProgress(progressValue)}
+                  onTouchEnd={() => commitProgress(progressValue)}
+                  onKeyUp={() => commitProgress(progressValue)}
+                  className="h-1.5 flex-1 cursor-pointer accent-primary"
+                />
+                {task.status !== "COMPLETED" && task.status !== "CANCELLED" && (
+                  <button
+                    onClick={() => commitProgress(100)}
+                    className="flex shrink-0 items-center gap-1 rounded-lg border border-border px-2.5 py-1 text-xs font-medium text-foreground hover:bg-muted"
+                  >
+                    <CheckCircle2 size={13} /> Mark Complete
+                  </button>
+                )}
+              </div>
+            ) : (
+              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                <div className="h-full rounded-full bg-primary" style={{ width: `${task.progress}%` }} />
+              </div>
+            )}
           </div>
 
           <div>

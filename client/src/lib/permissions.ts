@@ -1,4 +1,4 @@
-import type { Project, Team, User } from "../types";
+import type { Project, Task, Team, User } from "../types";
 
 // Frontend mirror of server/src/services/permissions.ts, used ONLY to decide
 // what to render (hide buttons/pages a user can't use). The backend is the
@@ -43,6 +43,20 @@ export function canEditTeam(user: User, team: Team) {
 
 export function canDeleteTeam(user: User, team: Team) {
   return canEditTeam(user, team);
+}
+
+// Same rule the backend applies for both PATCH /tasks/:id and
+// PATCH /tasks/:id/status: only the people who could actually move this
+// task forward can touch its status/progress — notably including the
+// assignee themselves, so a Member can complete their own work without
+// needing a Super Admin or Faculty to do it for them.
+export function canChangeTaskStatus(user: User, task: Task) {
+  if (user.role === "SUPER_ADMIN") return true;
+  if (user.role === "FACULTY") return task.project.supervisorId === user.id || task.project.createdById === user.id;
+  if (user.role === "TA") return true;
+  if (user.role === "LEADER") return task.team?.leaderId === user.id;
+  if (user.role === "STUDENT") return task.assigneeId === user.id;
+  return false;
 }
 
 export function canReviewTask(user: User) {

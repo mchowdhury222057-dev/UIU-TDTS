@@ -378,9 +378,13 @@ export async function mockRequest<T>(method: string, path: string, body: unknown
     const raw = store.tasks.find((x) => x.id === params!.id);
     if (!raw) notFound("Task not found");
     if (!perm.canChangeTaskStatus(user, raw)) forbidden();
+    const previousStatus = raw.status;
     raw.status = b.status;
     raw.progress = b.status === "COMPLETED" ? 100 : b.status === "BACKLOG" ? 0 : raw.progress;
     raw.updatedAt = new Date().toISOString();
+    if (raw.status === "COMPLETED" && previousStatus !== "COMPLETED" && raw.createdById !== user.id) {
+      store.notifications.unshift({ id: nextId("n"), userId: raw.createdById, type: "TASK", title: "Task completed", body: `${user.name} marked "${raw.title}" as complete.`, read: false, createdAt: new Date().toISOString() });
+    }
     persist();
     return hydrateTask(raw) as T;
   }
@@ -395,17 +399,32 @@ export async function mockRequest<T>(method: string, path: string, body: unknown
         store.notifications.unshift({ id: nextId("n"), userId: b.assigneeId, type: "TASK", title: "New task assigned", body: `You have been assigned to "${raw.title}".`, read: false, createdAt: new Date().toISOString() });
       }
     }
+    // Keep progress and status in sync, same as the real backend: hitting
+    // 100% completes the task on its own, dropping below un-completes it.
+    const previousStatus = raw.status;
+    let status = b.status !== undefined ? b.status : undefined;
+    if (b.progress !== undefined) {
+      const currentStatus = status ?? raw.status;
+      if (b.progress >= 100 && currentStatus !== "CANCELLED") {
+        status = "COMPLETED";
+      } else if (b.progress < 100 && currentStatus === "COMPLETED") {
+        status = "IN_PROGRESS";
+      }
+    }
     Object.assign(raw, {
       ...(b.title !== undefined && { title: b.title }),
       ...(b.description !== undefined && { description: b.description }),
       ...(b.priority !== undefined && { priority: b.priority }),
-      ...(b.status !== undefined && { status: b.status }),
+      ...(status !== undefined && { status }),
       ...(b.assigneeId !== undefined && { assigneeId: b.assigneeId }),
       ...(b.dueDate !== undefined && { dueDate: b.dueDate }),
       ...(b.progress !== undefined && { progress: b.progress }),
       ...(b.tags !== undefined && { tags: b.tags }),
       updatedAt: new Date().toISOString(),
     });
+    if (raw.status === "COMPLETED" && previousStatus !== "COMPLETED" && raw.createdById !== user.id) {
+      store.notifications.unshift({ id: nextId("n"), userId: raw.createdById, type: "TASK", title: "Task completed", body: `${user.name} marked "${raw.title}" as complete.`, read: false, createdAt: new Date().toISOString() });
+    }
     persist();
     return hydrateTask(raw) as T;
   }

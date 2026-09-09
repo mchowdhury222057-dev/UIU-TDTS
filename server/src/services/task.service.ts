@@ -136,6 +136,20 @@ export async function updateTask(user: User, id: string, input: UpdateTaskInput)
     }
   }
 
+  // Keep progress and status from disagreeing with each other: reaching 100%
+  // (e.g. an assignee dragging their own progress slider to done) marks the
+  // task Completed on its own, and pulling it back below 100% un-completes
+  // it, without anyone having to separately flip the status dropdown too.
+  let status = input.status;
+  if (input.progress !== undefined) {
+    const currentStatus = status ?? task.status;
+    if (input.progress >= 100 && currentStatus !== TaskStatus.CANCELLED) {
+      status = TaskStatus.COMPLETED;
+    } else if (input.progress < 100 && currentStatus === TaskStatus.COMPLETED) {
+      status = TaskStatus.IN_PROGRESS;
+    }
+  }
+
   return prisma.$transaction(async (tx) => {
     const updated = await tx.task.update({
       where: { id },
@@ -143,7 +157,7 @@ export async function updateTask(user: User, id: string, input: UpdateTaskInput)
         title: input.title,
         description: input.description,
         priority: input.priority,
-        status: input.status,
+        status,
         assigneeId: input.assigneeId,
         dueDate: input.dueDate,
         progress: input.progress,
@@ -161,6 +175,17 @@ export async function updateTask(user: User, id: string, input: UpdateTaskInput)
       });
     }
 
+    // Let the task's creator (typically the supervising Faculty/Admin) know
+    // work finished on its own, instead of them having to check in on it.
+    if (updated.status === TaskStatus.COMPLETED && task.status !== TaskStatus.COMPLETED && updated.createdById !== user.id) {
+      await createNotification(tx, {
+        userId: updated.createdById,
+        type: "TASK",
+        title: "Task completed",
+        body: `${user.name} marked "${updated.title}" as complete.`,
+      });
+    }
+
     return updated;
   });
 }
@@ -173,10 +198,23 @@ export async function updateTaskStatus(user: User, id: string, status: TaskStatu
   const progress =
     status === TaskStatus.COMPLETED ? 100 : status === TaskStatus.BACKLOG ? 0 : task.progress;
 
-  return prisma.task.update({
-    where: { id },
-    data: { status, progress },
-    include: taskInclude,
+  return prisma.$transaction(async (tx) => {
+    const updated = await tx.task.update({
+      where: { id },
+      data: { status, progress },
+      include: taskInclude,
+    });
+
+    if (status === TaskStatus.COMPLETED && task.status !== TaskStatus.COMPLETED && task.createdById !== user.id) {
+      await createNotification(tx, {
+        userId: task.createdById,
+        type: "TASK",
+        title: "Task completed",
+        body: `${user.name} marked "${updated.title}" as complete.`,
+      });
+    }
+
+    return updated;
   });
 }
 
