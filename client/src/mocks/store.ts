@@ -2,10 +2,11 @@
 // mutated in place by router.ts and persisted to sessionStorage so a
 // refresh mid-demo doesn't lose anything created during the session.
 
-import type { Notification, Performance, Project, Review, Task, Team, TeamMember, User } from "../types";
+import type { HelpArticle, Notification, Performance, Project, Review, Task, Team, TeamMember, User } from "../types";
 import {
   RawAuditLog,
   RawComment,
+  RawHelpArticle,
   RawNotification,
   RawPerformance,
   RawProject,
@@ -16,6 +17,7 @@ import {
   RawUser,
   rawAuditLogs,
   rawComments,
+  rawHelpArticles,
   rawNotifications,
   rawPerformance,
   rawProjects,
@@ -37,10 +39,14 @@ interface Store {
   performance: RawPerformance[];
   notifications: RawNotification[];
   auditLogs: RawAuditLog[];
+  helpArticles: RawHelpArticle[];
   sessionUserId: string | null;
 }
 
-const STORAGE_KEY = "uiu_tdts_demo_store_v1";
+// Bump this whenever the Store shape changes so a stale sessionStorage
+// entry from a previous demo mode version doesn't get loaded with a
+// mismatched shape.
+const STORAGE_KEY = "uiu_tdts_demo_store_v2";
 
 function freshStore(): Store {
   return {
@@ -54,6 +60,7 @@ function freshStore(): Store {
     performance: structuredClone(rawPerformance),
     notifications: structuredClone(rawNotifications),
     auditLogs: structuredClone(rawAuditLogs),
+    helpArticles: structuredClone(rawHelpArticles),
     sessionUserId: null,
   };
 }
@@ -191,4 +198,8 @@ export function hydratePerformance(raw: RawPerformance): Performance {
 
 export function hydrateNotification(raw: RawNotification): Notification {
   return { ...raw };
+}
+
+export function hydrateHelpArticle(raw: RawHelpArticle): HelpArticle {
+  return { ...raw, createdBy: getUser(raw.createdById)! };
 }

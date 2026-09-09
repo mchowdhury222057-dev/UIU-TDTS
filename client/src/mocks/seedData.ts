@@ -415,3 +415,21 @@ export const rawAuditLogs: RawAuditLog[] = [
   { id: "al-4", actorId: "u-admin", action: "TEAM_CREATE", targetType: "Team", targetId: "team-phoenix", details: JSON.stringify({ name: "Phoenix" }), createdAt: daysFromNow(-56) },
   { id: "al-5", actorId: "u-admin", action: "ROLE_CHANGE", targetType: "User", targetId: "u-ayesha", details: JSON.stringify({ from: "STUDENT", to: "LEADER", targetName: "Ayesha Khan" }), createdAt: daysFromNow(-90) },
 ];
+
+export interface RawHelpArticle {
+  id: string;
+  question: string;
+  answer: string;
+  order: number;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export const rawHelpArticles: RawHelpArticle[] = [
+  { id: "help-1", question: "How do I create a new task?", answer: "Use the Create button in the top bar, or the + icon on any Kanban column, and select New Task. Fill in the title, priority, assignee, and due date.", order: 0, createdById: "u-admin", createdAt: daysFromNow(-90), updatedAt: daysFromNow(-90) },
+  { id: "help-2", question: "Who can create projects and teams?", answer: "Only Super Admin and Faculty accounts can create new projects and teams. Team Leaders and Members can create tasks within projects they're connected to.", order: 1, createdById: "u-admin", createdAt: daysFromNow(-90), updatedAt: daysFromNow(-90) },
+  { id: "help-3", question: "How does the review process work?", answer: "Submit a completed task for review from the Reviews & Feedback page. A Faculty member, Teaching Assistant, or Super Admin can then approve, request changes, or reject the submission.", order: 2, createdById: "u-admin", createdAt: daysFromNow(-90), updatedAt: daysFromNow(-90) },
+  { id: "help-4", question: "Why can't I see certain pages?", answer: "UIU TDTS uses role-based access control. Pages and actions are shown based on your role — Super Admin, Faculty, Teaching Assistant, Team Leader, or Member.", order: 3, createdById: "u-admin", createdAt: daysFromNow(-90), updatedAt: daysFromNow(-90) },
+  { id: "help-5", question: "How do I change my password?", answer: "Go to Settings → Security, enter your current password and a new password, then click Update Password.", order: 4, createdById: "u-admin", createdAt: daysFromNow(-90), updatedAt: daysFromNow(-90) },
+];

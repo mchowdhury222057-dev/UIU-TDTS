@@ -171,6 +171,17 @@ export interface AuditLog {
   actor: User | null;
 }
 
+export interface HelpArticle {
+  id: string;
+  question: string;
+  answer: string;
+  order: number;
+  createdById: string;
+  createdAt: string;
+  updatedAt: string;
+  createdBy: User;
+}
+
 export interface DashboardStats {
   stats: {
     projects: number;

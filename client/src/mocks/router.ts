@@ -8,6 +8,7 @@ import type { DashboardStats, ReportsData, TaskStatus, Team, User } from "../typ
 import * as perm from "./permissions";
 import {
   getUser,
+  hydrateHelpArticle,
   hydrateNotification,
   hydratePerformance,
   hydrateProject,
@@ -509,6 +510,52 @@ export async function mockRequest<T>(method: string, path: string, body: unknown
   if (method === "GET" && p === "/permissions/matrix") {
     if (user.role !== "SUPER_ADMIN") forbidden();
     return perm.PERMISSION_MATRIX as unknown as T;
+  }
+
+  // ---------- HELP ARTICLES ----------
+  if (method === "GET" && p === "/help") {
+    return store.helpArticles
+      .slice()
+      .sort((a, b2) => a.order - b2.order || a.createdAt.localeCompare(b2.createdAt))
+      .map(hydrateHelpArticle) as T;
+  }
+  if (method === "POST" && p === "/help") {
+    if (!perm.canManageHelp(user)) forbidden();
+    const maxOrder = store.helpArticles.reduce((max, a) => Math.max(max, a.order), -1);
+    const raw = {
+      id: nextId("help"),
+      question: b.question,
+      answer: b.answer,
+      order: maxOrder + 1,
+      createdById: user.id,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    };
+    store.helpArticles.push(raw);
+    store.auditLogs.unshift({ id: nextId("al"), actorId: user.id, action: "HELP_ARTICLE_CREATE", targetType: "HelpArticle", targetId: raw.id, details: JSON.stringify({ question: raw.question }), createdAt: new Date().toISOString() });
+    persist();
+    return hydrateHelpArticle(raw) as T;
+  }
+  if ((params = method === "PATCH" ? match("/help/:id", p) : null)) {
+    if (!perm.canManageHelp(user)) forbidden();
+    const raw = store.helpArticles.find((x) => x.id === params!.id);
+    if (!raw) notFound("Help article not found");
+    if (b.question !== undefined) raw.question = b.question;
+    if (b.answer !== undefined) raw.answer = b.answer;
+    if (b.order !== undefined) raw.order = b.order;
+    raw.updatedAt = new Date().toISOString();
+    store.auditLogs.unshift({ id: nextId("al"), actorId: user.id, action: "HELP_ARTICLE_UPDATE", targetType: "HelpArticle", targetId: raw.id, details: JSON.stringify({ question: raw.question }), createdAt: new Date().toISOString() });
+    persist();
+    return hydrateHelpArticle(raw) as T;
+  }
+  if ((params = method === "DELETE" ? match("/help/:id", p) : null)) {
+    if (!perm.canManageHelp(user)) forbidden();
+    const raw = store.helpArticles.find((x) => x.id === params!.id);
+    if (!raw) notFound("Help article not found");
+    store.helpArticles = store.helpArticles.filter((x) => x.id !== raw.id);
+    store.auditLogs.unshift({ id: nextId("al"), actorId: user.id, action: "HELP_ARTICLE_DELETE", targetType: "HelpArticle", targetId: raw.id, details: JSON.stringify({ question: raw.question }), createdAt: new Date().toISOString() });
+    persist();
+    return null as T;
   }
 
   throw new ApiClientError(404, "Route not found");

@@ -11,6 +11,7 @@ import reportRoutes from "./report.routes";
 import dashboardRoutes from "./dashboard.routes";
 import auditLogRoutes from "./auditLog.routes";
 import permissionRoutes from "./permission.routes";
+import helpRoutes from "./help.routes";
 
 const router = Router();
 
@@ -26,5 +27,6 @@ router.use("/reports", reportRoutes);
 router.use("/dashboard", dashboardRoutes);
 router.use("/audit-logs", auditLogRoutes);
 router.use("/permissions", permissionRoutes);
+router.use("/help", helpRoutes);
 
 export default router;

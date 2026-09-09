@@ -211,6 +211,10 @@ export function canManagePermissions(user: User): boolean {
   return user.role === Role.SUPER_ADMIN;
 }
 
+export function canManageHelp(user: User): boolean {
+  return user.role === Role.SUPER_ADMIN;
+}
+
 export function canModifyUserRole(actor: User, target: User): { allowed: boolean; reason?: string } {
   if (actor.role !== Role.SUPER_ADMIN) {
     return { allowed: false, reason: "You do not have permission to perform this action." };

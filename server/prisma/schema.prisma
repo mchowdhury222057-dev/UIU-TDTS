@@ -107,6 +107,7 @@ model User {
   notifications      Notification[]
   performance        Performance[]
   auditLogs          AuditLog[]    @relation("AuditActor")
+  helpArticlesCreated HelpArticle[] @relation("HelpArticleCreator")
 
   @@index([email])
   @@index([role])
@@ -282,6 +283,20 @@ model Performance {
   @@unique([userId, projectId])
   @@index([userId])
   @@index([projectId])
+}
+
+model HelpArticle {
+  id          String   @id @default(cuid())
+  question    String
+  answer      String
+  order       Int      @default(0)
+  createdById String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  createdBy User @relation("HelpArticleCreator", fields: [createdById], references: [id], onDelete: Restrict)
+
+  @@index([order])
 }
 
 model AuditLog {

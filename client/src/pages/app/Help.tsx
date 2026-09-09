@@ -1,31 +1,46 @@
-import { BookOpen, ChevronDown, LifeBuoy, Signal } from "lucide-react";
+import { BookOpen, ChevronDown, LifeBuoy, Pencil, Plus, Signal, Trash2 } from "lucide-react";
 import { useState } from "react";
-
-const FAQS = [
-  {
-    q: "How do I create a new task?",
-    a: "Use the Create button in the top bar, or the + icon on any Kanban column, and select New Task. Fill in the title, priority, assignee, and due date.",
-  },
-  {
-    q: "Who can create projects and teams?",
-    a: "Only Super Admin and Faculty accounts can create new projects and teams. Team Leaders and Members can create tasks within projects they're connected to.",
-  },
-  {
-    q: "How does the review process work?",
-    a: "Submit a completed task for review from the Reviews & Feedback page. A Faculty member, Teaching Assistant, or Super Admin can then approve, request changes, or reject the submission.",
-  },
-  {
-    q: "Why can't I see certain pages?",
-    a: "UIU TDTS uses role-based access control. Pages and actions are shown based on your role — Super Admin, Faculty, Teaching Assistant, Team Leader, or Member.",
-  },
-  {
-    q: "How do I change my password?",
-    a: "Go to Settings → Security, enter your current password and a new password, then click Update Password.",
-  },
-];
+import { ApiClientError } from "../../api/client";
+import { helpApi } from "../../api/help";
+import { HelpArticleModal } from "../../components/modals/HelpArticleModal";
+import { EmptyState, ErrorState, LoadingState } from "../../components/ui/States";
+import { useAuth } from "../../context/AuthContext";
+import { useToast } from "../../context/ToastContext";
+import { useFetch } from "../../hooks/useFetch";
+import { canManageHelp } from "../../lib/permissions";
+import type { HelpArticle } from "../../types";
 
 export function Help() {
-  const [openIndex, setOpenIndex] = useState<number | null>(0);
+  const { user } = useAuth();
+  const { showToast } = useToast();
+  const { data: articles, isLoading, error, refetch } = useFetch(() => helpApi.list(), []);
+  const [openId, setOpenId] = useState<string | null>(null);
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editingArticle, setEditingArticle] = useState<HelpArticle | null>(null);
+
+  if (!user) return null;
+  const canEdit = canManageHelp(user);
+
+  const openCreateModal = () => {
+    setEditingArticle(null);
+    setModalOpen(true);
+  };
+
+  const openEditModal = (article: HelpArticle) => {
+    setEditingArticle(article);
+    setModalOpen(true);
+  };
+
+  const handleDelete = async (article: HelpArticle) => {
+    if (!confirm(`Delete "${article.question}"? This cannot be undone.`)) return;
+    try {
+      await helpApi.remove(article.id);
+      showToast("Help article deleted.");
+      refetch();
+    } catch (err) {
+      showToast(err instanceof ApiClientError ? err.message : "Failed to delete help article.", "error");
+    }
+  };
 
   return (
     <div className="max-w-3xl space-y-6">
@@ -58,22 +73,74 @@ export function Help() {
       </div>
 
       <div className="rounded-2xl border border-border bg-card p-5">
-        <h3 className="mb-2 font-heading text-sm font-semibold text-foreground">Frequently Asked Questions</h3>
-        <div className="divide-y divide-border">
-          {FAQS.map((faq, i) => (
-            <div key={i}>
-              <button
-                onClick={() => setOpenIndex(openIndex === i ? null : i)}
-                className="flex w-full items-center justify-between py-3 text-left text-sm font-medium text-foreground"
-              >
-                {faq.q}
-                <ChevronDown size={16} className={`shrink-0 text-muted-foreground transition ${openIndex === i ? "rotate-180" : ""}`} />
-              </button>
-              {openIndex === i && <p className="pb-3 text-sm text-muted-foreground">{faq.a}</p>}
-            </div>
-          ))}
+        <div className="mb-2 flex items-center justify-between gap-2">
+          <h3 className="font-heading text-sm font-semibold text-foreground">Frequently Asked Questions</h3>
+          {canEdit && (
+            <button
+              onClick={openCreateModal}
+              className="flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 text-xs font-semibold text-white hover:brightness-95"
+            >
+              <Plus size={14} /> Add Question
+            </button>
+          )}
         </div>
+
+        {isLoading ? (
+          <LoadingState label="Loading FAQs..." />
+        ) : error ? (
+          <ErrorState message={error} onRetry={refetch} />
+        ) : !articles || articles.length === 0 ? (
+          <EmptyState
+            title="No questions yet"
+            description={canEdit ? "Add the first question to help your users." : "Check back soon for answers to common questions."}
+          />
+        ) : (
+          <div className="divide-y divide-border">
+            {articles.map((article) => (
+              <div key={article.id}>
+                <div className="flex w-full items-center justify-between gap-2 py-3">
+                  <button
+                    onClick={() => setOpenId(openId === article.id ? null : article.id)}
+                    className="flex flex-1 items-center justify-between gap-2 text-left text-sm font-medium text-foreground"
+                  >
+                    {article.question}
+                    <ChevronDown
+                      size={16}
+                      className={`shrink-0 text-muted-foreground transition ${openId === article.id ? "rotate-180" : ""}`}
+                    />
+                  </button>
+                  {canEdit && (
+                    <div className="flex shrink-0 items-center gap-1">
+                      <button
+                        onClick={() => openEditModal(article)}
+                        className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-muted"
+                        title="Edit"
+                      >
+                        <Pencil size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(article)}
+                        className="flex h-7 w-7 items-center justify-center rounded-lg text-muted-foreground hover:bg-red-50 hover:text-red-600"
+                        title="Delete"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+                {openId === article.id && <p className="pb-3 text-sm text-muted-foreground">{article.answer}</p>}
+              </div>
+            ))}
+          </div>
+        )}
       </div>
+
+      <HelpArticleModal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        onSaved={refetch}
+        article={editingArticle}
+      />
     </div>
   );
 }

@@ -69,6 +69,10 @@ export function canManageRoles(user: User) {
   return user.role === "SUPER_ADMIN";
 }
 
+export function canManageHelp(user: User) {
+  return user.role === "SUPER_ADMIN";
+}
+
 export function getCreateOptions(user: User): Array<"project" | "task" | "team"> {
   switch (user.role) {
     case "SUPER_ADMIN":

@@ -19,6 +19,7 @@ async function hash(password: string) {
 async function main() {
   console.log("Resetting database...");
   await prisma.auditLog.deleteMany();
+  await prisma.helpArticle.deleteMany();
   await prisma.notification.deleteMany();
   await prisma.performance.deleteMany();
   await prisma.review.deleteMany();
@@ -372,6 +373,22 @@ async function main() {
       { userId: ta.id, type: NotificationType.REVIEW, title: "Pending reviews", body: "There are 2 submissions awaiting review.", read: false },
     ],
   });
+
+  console.log("Creating help articles...");
+
+  const helpArticleSeeds = [
+    { question: "How do I create a new task?", answer: "Use the Create button in the top bar, or the + icon on any Kanban column, and select New Task. Fill in the title, priority, assignee, and due date." },
+    { question: "Who can create projects and teams?", answer: "Only Super Admin and Faculty accounts can create new projects and teams. Team Leaders and Members can create tasks within projects they're connected to." },
+    { question: "How does the review process work?", answer: "Submit a completed task for review from the Reviews & Feedback page. A Faculty member, Teaching Assistant, or Super Admin can then approve, request changes, or reject the submission." },
+    { question: "Why can't I see certain pages?", answer: "UIU TDTS uses role-based access control. Pages and actions are shown based on your role — Super Admin, Faculty, Teaching Assistant, Team Leader, or Member." },
+    { question: "How do I change my password?", answer: "Go to Settings → Security, enter your current password and a new password, then click Update Password." },
+  ];
+
+  for (let i = 0; i < helpArticleSeeds.length; i++) {
+    await prisma.helpArticle.create({
+      data: { ...helpArticleSeeds[i], order: i, createdById: admin.id },
+    });
+  }
 
   console.log("Seed complete.");
   console.log({
