@@ -1,5 +1,5 @@
 import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
-import { FormEvent, KeyboardEvent, useState } from "react";
+import { FormEvent, KeyboardEvent, useEffect, useRef, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ApiClientError } from "../../api/client";
 import { DEPARTMENTS } from "../../lib/constants";
@@ -51,6 +51,17 @@ export function SignupPage() {
   const [title, setTitle] = useState("");
   const [bio, setBio] = useState("");
 
+  // The "Next" and "Create Account" buttons share the same on-screen slot
+  // across steps, so a rapid double-click (trackpads and some mice can
+  // register a single press as two clicks) can land its second click on the
+  // freshly-rendered submit button right as step 3 mounts. Ignoring a submit
+  // that arrives immediately after a step change blocks that without adding
+  // any perceptible delay for a deliberate click.
+  const lastStepChangeAt = useRef(Date.now());
+  useEffect(() => {
+    lastStepChangeAt.current = Date.now();
+  }, [step]);
+
   const validateStep = (): string | null => {
     if (step === 1) {
       if (!name.trim() || name.trim().length < 2) return "Please enter your full name.";
@@ -87,6 +98,7 @@ export function SignupPage() {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (Date.now() - lastStepChangeAt.current < 400) return;
     setError(null);
     setIsSubmitting(true);
     try {
