@@ -4,7 +4,6 @@ import {
   Eye,
   EyeOff,
   FolderKanban,
-  GraduationCap,
   ListChecks,
   Lock,
   Mail,
@@ -16,11 +15,8 @@ import { ApiClientError } from "../../api/client";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
 
-// Drop the real UIU campus photo at client/public/images/uiu-campus.jpg and
-// it will appear automatically — this is a CSS background-image (not an
-// <img>), so until that file exists the page just falls back to the solid
-// navy gradient below instead of showing a broken-image icon.
 const CAMPUS_IMAGE_URL = "/images/uiu-campus.jpg";
+const UIU_LOGO_URL = "/images/uiu-logo.png";
 
 const FEATURES = [
   { icon: FolderKanban, label: "Manage Projects" },
@@ -33,11 +29,11 @@ function BrandMark({ compact }: { compact?: boolean }) {
   return (
     <div className="flex items-center gap-2.5">
       <div
-        className={`flex shrink-0 items-center justify-center rounded-xl bg-[#F97316] text-white shadow-sm ${
-          compact ? "h-9 w-9" : "h-10 w-10"
+        className={`flex shrink-0 items-center justify-center rounded-xl bg-white p-1 shadow-sm ${
+          compact ? "h-10 w-10" : "h-12 w-12"
         }`}
       >
-        <GraduationCap size={compact ? 18 : 20} />
+        <img src={UIU_LOGO_URL} alt="UIU logo" className="h-full w-full object-contain" />
       </div>
       <div className="min-w-0 leading-tight">
         <p className={`font-heading font-bold ${compact ? "text-sm text-[#1E293B]" : "text-base text-white"}`}>UIU</p>
@@ -88,7 +84,7 @@ export function LoginPage() {
 
   return (
     <div className="relative min-h-screen w-full overflow-hidden bg-gradient-to-br from-[#111827] via-[#1E293B] to-[#0F172A]">
-      {/* Campus photo layer (falls back to the gradient above if the asset isn't present yet) */}
+      {/* Campus photo layer */}
       <div
         className="absolute inset-0 bg-cover bg-center"
         style={{ backgroundImage: `url(${CAMPUS_IMAGE_URL})` }}
