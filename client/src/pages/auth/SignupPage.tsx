@@ -1,5 +1,5 @@
 import { ArrowLeft, ArrowRight, CheckCircle2 } from "lucide-react";
-import { FormEvent, useState } from "react";
+import { FormEvent, KeyboardEvent, useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { ApiClientError } from "../../api/client";
 import { DEPARTMENTS } from "../../lib/constants";
@@ -78,6 +78,13 @@ export function SignupPage() {
     setStep((s) => Math.max(1, s - 1));
   };
 
+  const handleFormKeyDown = (e: KeyboardEvent<HTMLFormElement>) => {
+    if (e.key === "Enter" && step < 3) {
+      e.preventDefault();
+      next();
+    }
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -153,7 +160,7 @@ export function SignupPage() {
               ))}
             </div>
 
-            <form onSubmit={handleSubmit} className="mt-6">
+            <form onSubmit={handleSubmit} onKeyDown={handleFormKeyDown} className="mt-6">
               {error && (
                 <p role="alert" className="mb-4 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
                   {error}
